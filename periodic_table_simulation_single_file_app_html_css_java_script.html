@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Periodic Table Simulation</title>
+  <style>
+    :root{
+      --bg:#0f1226; /* deep indigo */
+      --panel:#15183a;
+      --soft:#1b2050;
+      --text:#eef1ff;
+      --muted:#bfc7ff;
+      --accent:#7aa2ff;
+      --ring: rgba(122,162,255,.35);
+      --shadow: 0 10px 30px rgba(0,0,0,.35);
+
+      /* category colors */
+      --alkali:#f94144;
+      --alkaline:#f3722c;
+      --transition:#f9c74f;
+      --post:#90be6d;
+      --metalloid:#43aa8b;
+      --nonmetal:#577590;
+      --halogen:#9b5de5;
+      --noble:#00bbf9;
+      --lanth:#ff7b00;
+      --act:#ff006e;
+    }
+
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; font-family: ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Inter,Helvetica,Arial,"Apple Color Emoji","Segoe UI Emoji";
+      background: radial-gradient(1200px 800px at 20% -10%, #1a1e45 0%, transparent 60%),
+                  radial-gradient(1200px 800px at 120% 120%, #111333 0%, transparent 50%),
+                  var(--bg);
+      color:var(--text);
+      display:flex; flex-direction:column;
+    }
+
+    header{
+      position:sticky; top:0; z-index:5; backdrop-filter:saturate(140%) blur(8px);
+      background:linear-gradient(180deg, rgba(21,24,58,.9), rgba(21,24,58,.6));
+      border-bottom:1px solid rgba(255,255,255,.06);
+      box-shadow: var(--shadow);
+    }
+    .wrap{max-width:1200px; margin:0 auto; padding:18px 16px}
+
+    h1{margin:0; font-size: clamp(20px, 3.2vw, 34px); letter-spacing:.5px}
+    .sub{color:var(--muted); font-size:14px}
+
+    .toolbar{display:grid; grid-template-columns: 1fr auto auto auto; gap:12px; margin-top:14px}
+    .tool{display:flex; gap:8px; align-items:center; background:var(--panel); border:1px solid rgba(255,255,255,.06); padding:10px 12px; border-radius:14px}
+    input, select{background:transparent; border:none; color:var(--text); outline:none}
+    input[type="search"]{width:100%}
+    select{appearance:none; padding-right:18px}
+
+    .table-area{display:grid; grid-template-columns: 1.2fr 2fr; gap:18px; align-items:start; padding-bottom:24px}
+
+    .periodic{
+      background:var(--panel); border:1px solid rgba(255,255,255,.06); border-radius:18px; padding:14px; box-shadow: var(--shadow);
+    }
+    .grid{display:grid; grid-template-columns: repeat(18, minmax(40px, 1fr)); gap:6px;}
+
+    .cell{
+      position:relative; padding:8px; border-radius:12px; min-height:60px; overflow:hidden; cursor:pointer;
+      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
+      border:1px solid rgba(255,255,255,.08);
+      transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease;
+    }
+    .cell:hover{transform: translateY(-2px); box-shadow: 0 8px 24px rgba(122,162,255,.15); border-color: var(--ring)}
+
+    .num{font-size:10px; color:var(--muted)}
+    .sym{font-weight:800; font-size:18px; line-height:1.1}
+    .name{font-size:10px; color:var(--muted)}
+    .mass{position:absolute; bottom:6px; right:8px; font-size:10px; color:var(--muted)}
+
+    .legend{display:flex; flex-wrap:wrap; gap:8px; margin-top:12px}
+    .tag{display:inline-flex; align-items:center; gap:8px; font-size:12px; color:var(--muted); background:var(--soft); padding:6px 10px; border-radius:999px; border:1px solid rgba(255,255,255,.06)}
+    .dot{width:10px; height:10px; border-radius:50%}
+
+    .details{position:sticky; top:90px; background:var(--panel); border:1px solid rgba(255,255,255,.06); border-radius:18px; padding:16px; box-shadow: var(--shadow)}
+    .details .big{font-size:54px; font-weight:900; line-height:1; margin:8px 0}
+    .kv{display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-top:10px}
+    .kv div{background:var(--soft); border:1px solid rgba(255,255,255,.06); padding:10px; border-radius:12px; font-size:13px}
+
+    .filters{display:flex; gap:8px; flex-wrap:wrap}
+    .btn{padding:8px 12px; border-radius:12px; border:1px solid rgba(255,255,255,.12); background:var(--soft); color:var(--text); cursor:pointer}
+    .btn[aria-pressed="true"]{outline:2px solid var(--ring)}
+
+    @media (max-width: 980px){
+      .table-area{grid-template-columns: 1fr;}
+      .details{position:relative; top:auto}
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <h1>Periodic Table Simulation</h1>
+      <div class="sub">Interactive exploration • Filter by group, period & properties • Responsive UI</div>
+
+      <div class="toolbar">
+        <div class="tool" style="grid-column: span 2">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M21 21l-4.3-4.3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="10" cy="10" r="6.8" stroke="currentColor" stroke-width="1.6"/></svg>
+          <input id="search" type="search" placeholder="Search by name, symbol or atomic number…" />
+        </div>
+        <div class="tool">
+          <label for="groupSel" class="sub" style="margin-right:6px">Group</label>
+          <select id="groupSel"></select>
+        </div>
+        <div class="tool">
+          <label for="periodSel" class="sub" style="margin-right:6px">Period</label>
+          <select id="periodSel"></select>
+        </div>
+        <div class="tool">
+          <label for="propSel" class="sub" style="margin-right:6px">Property</label>
+          <select id="propSel"></select>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap table-area">
+    <section class="periodic">
+      <div id="grid" class="grid" aria-live="polite"></div>
+      <div class="legend" id="legend"></div>
+    </section>
+
+    <aside class="details" id="details" aria-live="polite">
+      <div class="sub">Selected Element</div>
+      <div class="big" id="dSym">—</div>
+      <div style="font-size:18px; font-weight:700" id="dName">Click an element</div>
+      <div class="sub" id="dMeta">Atomic # — • Category —</div>
+      <div class="kv" id="dKV">
+        <div><strong>Atomic Mass</strong><div id="dMass">—</div></div>
+        <div><strong>Period</strong><div id="dPeriod">—</div></div>
+        <div><strong>Group</strong><div id="dGroup">—</div></div>
+        <div><strong>Block</strong><div id="dBlock">—</div></div>
+      </div>
+      <div style="margin-top:12px" class="sub">Tip: Use the filters or type in the search to quickly find elements.</div>
+      <div style="display:flex; gap:8px; margin-top:12px" class="filters">
+        <button class="btn" id="resetBtn">Reset filters</button>
+        <button class="btn" id="darkBtn" aria-pressed="true">Dark</button>
+      </div>
+    </aside>
+  </main>
+
+  <script>
+    // ---- Minimal dataset: H to Kr (1–36) with layout positions (x: group 1–18, y: period 1–7)
+    // Enough to demonstrate categories, filters, and interactions. Extendable to 118 by following the same schema.
+    const elements = [
+      {n:1,s:"H",name:"Hydrogen",mass:1.008,category:"nonmetal",block:"s",period:1,group:1,x:1,y:1},
+      {n:2,s:"He",name:"Helium",mass:4.0026,category:"noble gas",block:"s",period:1,group:18,x:18,y:1},
+
+      {n:3,s:"Li",name:"Lithium",mass:6.94,category:"alkali metal",block:"s",period:2,group:1,x:1,y:2},
+      {n:4,s:"Be",name:"Beryllium",mass:9.0122,category:"alkaline earth metal",block:"s",period:2,group:2,x:2,y:2},
+      {n:5,s:"B",name:"Boron",mass:10.81,category:"metalloid",block:"p",period:2,group:13,x:13,y:2},
+      {n:6,s:"C",name:"Carbon",mass:12.011,category:"nonmetal",block:"p",period:2,group:14,x:14,y:2},
+      {n:7,s:"N",name:"Nitrogen",mass:14.007,category:"nonmetal",block:"p",period:2,group:15,x:15,y:2},
+      {n:8,s:"O",name:"Oxygen",mass:15.999,category:"nonmetal",block:"p",period:2,group:16,x:16,y:2},
+      {n:9,s:"F",name:"Fluorine",mass:18.998,category:"halogen",block:"p",period:2,group:17,x:17,y:2},
+      {n:10,s:"Ne",name:"Neon",mass:20.180,category:"noble gas",block:"p",period:2,group:18,x:18,y:2},
+
+      {n:11,s:"Na",name:"Sodium",mass:22.990,category:"alkali metal",block:"s",period:3,group:1,x:1,y:3},
+      {n:12,s:"Mg",name:"Magnesium",mass:24.305,category:"alkaline earth metal",block:"s",period:3,group:2,x:2,y:3},
+      {n:13,s:"Al",name:"Aluminium",mass:26.982,category:"post-transition metal",block:"p",period:3,group:13,x:13,y:3},
+      {n:14,s:"Si",name:"Silicon",mass:28.085,category:"metalloid",block:"p",period:3,group:14,x:14,y:3},
+      {n:15,s:"P",name:"Phosphorus",mass:30.974,category:"nonmetal",block:"p",period:3,group:15,x:15,y:3},
+      {n:16,s:"S",name:"Sulfur",mass:32.06,category:"nonmetal",block:"p",period:3,group:16,x:16,y:3},
+      {n:17,s:"Cl",name:"Chlorine",mass:35.45,category:"halogen",block:"p",period:3,group:17,x:17,y:3},
+      {n:18,s:"Ar",name:"Argon",mass:39.948,category:"noble gas",block:"p",period:3,group:18,x:18,y:3},
+
+      {n:19,s:"K",name:"Potassium",mass:39.098,category:"alkali metal",block:"s",period:4,group:1,x:1,y:4},
+      {n:20,s:"Ca",name:"Calcium",mass:40.078,category:"alkaline earth metal",block:"s",period:4,group:2,x:2,y:4},
+      {n:21,s:"Sc",name:"Scandium",mass:44.956,category:"transition metal",block:"d",period:4,group:3,x:3,y:4},
+      {n:22,s:"Ti",name:"Titanium",mass:47.867,category:"transition metal",block:"d",period:4,group:4,x:4,y:4},
+      {n:23,s:"V",name:"Vanadium",mass:50.942,category:"transition metal",block:"d",period:4,group:5,x:5,y:4},
+      {n:24,s:"Cr",name:"Chromium",mass:51.996,category:"transition metal",block:"d",period:4,group:6,x:6,y:4},
+      {n:25,s:"Mn",name:"Manganese",mass:54.938,category:"transition metal",block:"d",period:4,group:7,x:7,y:4},
+      {n:26,s:"Fe",name:"Iron",mass:55.845,category:"transition metal",block:"d",period:4,group:8,x:8,y:4},
+      {n:27,s:"Co",name:"Cobalt",mass:58.933,category:"transition metal",block:"d",period:4,group:9,x:9,y:4},
+      {n:28,s:"Ni",name:"Nickel",mass:58.693,category:"transition metal",block:"d",period:4,group:10,x:10,y:4},
+      {n:29,s:"Cu",name:"Copper",mass:63.546,category:"transition metal",block:"d",period:4,group:11,x:11,y:4},
+      {n:30,s:"Zn",name:"Zinc",mass:65.38,category:"transition metal",block:"d",period:4,group:12,x:12,y:4},
+      {n:31,s:"Ga",name:"Gallium",mass:69.723,category:"post-transition metal",block:"p",period:4,group:13,x:13,y:4},
+      {n:32,s:"Ge",name:"Germanium",mass:72.630,category:"metalloid",block:"p",period:4,group:14,x:14,y:4},
+      {n:33,s:"As",name:"Arsenic",mass:74.922,category:"metalloid",block:"p",period:4,group:15,x:15,y:4},
+      {n:34,s:"Se",name:"Selenium",mass:78.971,category:"nonmetal",block:"p",period:4,group:16,x:16,y:4},
+      {n:35,s:"Br",name:"Bromine",mass:79.904,category:"halogen",block:"p",period:4,group:17,x:17,y:4},
+      {n:36,s:"Kr",name:"Krypton",mass:83.798,category:"noble gas",block:"p",period:4,group:18,x:18,y:4},
+    ];
+
+    // Category color mapping
+    const catColor = cat => ({
+      "alkali metal":"var(--alkali)",
+      "alkaline earth metal":"var(--alkaline)",
+      "transition metal":"var(--transition)",
+      "post-transition metal":"var(--post)",
+      "metalloid":"var(--metalloid)",
+      "nonmetal":"var(--nonmetal)",
+      "halogen":"var(--halogen)",
+      "noble gas":"var(--noble)",
+      "lanthanoid":"var(--lanth)",
+      "actinoid":"var(--act)",
+    })[cat] || "#6c7eea";
+
+    // Build select options
+    const groups = ["All", ...new Set(elements.map(e=>e.group))].sort((a,b)=> (a==='All')?-1:a-b);
+    const periods = ["All", ...new Set(elements.map(e=>e.period))].sort((a,b)=> (a==='All')?-1:a-b);
+    const properties = ["All","alkali metal","alkaline earth metal","transition metal","post-transition metal","metalloid","nonmetal","halogen","noble gas"];
+
+    const $ = sel => document.querySelector(sel);
+    const grid = $('#grid');
+
+    function optionize(el, arr){ el.innerHTML = arr.map(v=>`<option value="${v}">${v}</option>`).join(''); }
+    optionize($('#groupSel'), groups);
+    optionize($('#periodSel'), periods);
+    optionize($('#propSel'), properties);
+
+    // Render legend
+    const legendCats = properties.slice(1);
+    $('#legend').innerHTML = legendCats.map(c=>`<span class="tag"><span class="dot" style="background:${catColor(c)}"></span>${c}</span>`).join('');
+
+    const state = { q:"", group:"All", period:"All", prop:"All", selected:null };
+
+    function matches(e){
+      const qok = state.q.trim()==='' || [e.name,e.s,String(e.n)].some(v=> v.toLowerCase().includes(state.q.toLowerCase()));
+      const gok = state.group==='All' || e.group===Number(state.group);
+      const pok = state.period==='All' || e.period===Number(state.period);
+      const prok = state.prop==='All' || e.category===state.prop;
+      return qok && gok && pok && prok;
+    }
+
+    function card(e){
+      const color = catColor(e.category);
+      return `<button class="cell" data-n="${e.n}" style="grid-column:${e.x}; grid-row:${e.y}; border-left:3px solid ${color}">
+        <div class="num">${e.n}</div>
+        <div class="sym" style="color:${color}">${e.s}</div>
+        <div class="name">${e.name}</div>
+        <div class="mass">${e.mass}</div>
+      </button>`;
+    }
+
+    function render(){
+      // 7 periods high x 18 groups wide grid. Empty slots are simply no element at that coordinate.
+      grid.innerHTML = elements.filter(matches).map(card).join('');
+      grid.querySelectorAll('.cell').forEach(btn=> btn.addEventListener('click', ()=> select(Number(btn.dataset.n))));
+    }
+
+    function select(n){
+      const e = elements.find(x=>x.n===n);
+      if(!e) return;
+      state.selected = e.n;
+      $('#dSym').textContent = e.s;
+      $('#dName').textContent = e.name;
+      $('#dMeta').textContent = `Atomic # ${e.n} • ${e.category}`;
+      $('#dMass').textContent = e.mass;
+      $('#dPeriod').textContent = e.period;
+      $('#dGroup').textContent = e.group;
+      $('#dBlock').textContent = e.block.toUpperCase();
+    }
+
+    // Events
+    $('#search').addEventListener('input', e=>{ state.q = e.target.value; render(); });
+    $('#groupSel').addEventListener('change', e=>{ state.group = e.target.value; render(); });
+    $('#periodSel').addEventListener('change', e=>{ state.period = e.target.value; render(); });
+    $('#propSel').addEventListener('change', e=>{ state.prop = e.target.value; render(); });
+    $('#resetBtn').addEventListener('click', ()=>{
+      state.q=''; state.group='All'; state.period='All'; state.prop='All';
+      $('#search').value=''; ['#groupSel','#periodSel','#propSel'].forEach(s=> $(s).value='All');
+      render();
+    });
+
+    // (Optional) theme toggle (kept simple for single-file)
+    $('#darkBtn').addEventListener('click', (ev)=>{
+      const pressed = ev.currentTarget.getAttribute('aria-pressed')==='true';
+      ev.currentTarget.setAttribute('aria-pressed', String(!pressed));
+      document.body.style.filter = pressed ? 'invert(1) hue-rotate(180deg)' : 'none';
+    });
+
+    // Initial render & default selection
+    render();
+    select(6); // Carbon as default example
+  </script>
+</body>
+</html>
